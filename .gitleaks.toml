@@ -1,0 +1,11 @@
+title = "Manhwa Bookmarker gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Allowlist for placeholder values in .env.example"
+paths = [
+  '''\.env\.example$''',
+  '''README\.md$''',
+]
