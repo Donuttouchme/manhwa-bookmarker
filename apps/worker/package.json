@@ -1,0 +1,20 @@
+{
+  "name": "@manhwa/worker",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "dotenv -e ../../.env.local -- tsx watch src/index.ts",
+    "start": "dotenv -e ../../.env.local -- tsx src/index.ts",
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@manhwa/db": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^20.12.7",
+    "tsx": "^4.11.0",
+    "typescript": "^5.4.5"
+  }
+}
