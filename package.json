@@ -1,0 +1,28 @@
+{
+  "name": "manhwa-bookmarker",
+  "version": "0.0.0",
+  "private": true,
+  "packageManager": "pnpm@9.0.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @manhwa/web dev",
+    "build": "pnpm -r build",
+    "lint": "pnpm -r lint",
+    "test": "pnpm -r test",
+    "typecheck": "pnpm -r typecheck",
+    "db:migrate": "dotenv -e .env.local -- pnpm --filter @manhwa/db exec prisma migrate dev",
+    "db:studio": "dotenv -e .env.local -- pnpm --filter @manhwa/db exec prisma studio",
+    "db:generate": "dotenv -e .env.local -- pnpm --filter @manhwa/db exec prisma generate",
+    "worker:dev": "pnpm --filter @manhwa/worker dev",
+    "compose:up": "docker compose up -d",
+    "compose:down": "docker compose down",
+    "compose:reset": "docker compose down -v && docker compose up -d"
+  },
+  "devDependencies": {
+    "dotenv-cli": "^7.4.2",
+    "typescript": "^5.4.5",
+    "prettier": "^3.2.5"
+  }
+}
