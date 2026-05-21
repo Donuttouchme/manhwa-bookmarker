@@ -102,14 +102,19 @@ export class SuwayomiClient {
   }
 
   /**
-   * Given a source ID and a URL, searches the source for that URL and returns
-   * the first matching manga's metadata.
+   * Given a source ID and a URL, resolves the manga metadata.
    *
-   * Suwayomi v2 has no "fetch by URL" mutation; we use `fetchSourceManga` with
-   * `type: SEARCH` and pass the URL as the query string, which extensions
-   * typically recognise as a direct title lookup.
+   * Strategy (two-phase):
+   *  1. URL-as-SEARCH: pass the full URL as the SEARCH query to the source.
+   *     Many extensions recognise a URL string as a direct title lookup (e.g. MangaDex).
+   *  2. Internal DB lookup: if phase 1 returns no results (e.g. Bbato only accepts
+   *     text title queries), look in Suwayomi's manga database for a manga from this
+   *     source whose stored `url` path appears in the requested URL. This succeeds
+   *     when the manga was previously browsed/fetched through Suwayomi (e.g. via LATEST
+   *     or POPULAR) — Suwayomi caches the full manga record, so we can retrieve it
+   *     without hitting the source again.
    *
-   * Throws if no manga is returned by the source.
+   * Throws if neither phase finds a match.
    */
   async fetchMangaByUrl(sourceId: string, url: string): Promise<SuwayomiManga> {
     interface RawManga {
@@ -118,13 +123,15 @@ export class SuwayomiClient {
       thumbnailUrl: string | null;
       realUrl: string | null;
     }
-    interface Payload {
+
+    // Phase 1: URL-as-SEARCH (works for extensions that recognise URL queries).
+    interface SearchPayload {
       fetchSourceManga: {
         mangas: RawManga[];
       };
     }
 
-    const data = await this.gql<Payload>(
+    const searchData = await this.gql<SearchPayload>(
       `
       mutation FetchByUrl($source: LongString!, $query: String!) {
         fetchSourceManga(input: {
@@ -145,11 +152,106 @@ export class SuwayomiClient {
       { source: sourceId, query: url },
     );
 
-    const mangas = data.fetchSourceManga.mangas;
-    if (mangas.length === 0) {
-      throw new Error(`No manga found for URL "${url}" in source ${sourceId}`);
+    if (searchData.fetchSourceManga.mangas.length > 0) {
+      return searchData.fetchSourceManga.mangas[0];
     }
-    return mangas[0];
+
+    // Phase 2: internal DB lookup.
+    // Some extensions (e.g. Bbato) use their own slug-based URL format and do not
+    // accept full external URLs as search queries.  When Suwayomi has previously
+    // fetched a manga from this source (via LATEST/POPULAR/browse), its record is
+    // stored in the DB with the extension's own `url` path.  We match that path
+    // against the path component of the requested URL.
+    const urlPath = (() => {
+      try {
+        return new URL(url).pathname;
+      } catch {
+        return url;
+      }
+    })();
+
+    interface DbPayload {
+      mangas: {
+        nodes: RawManga[];
+      };
+    }
+
+    const dbData = await this.gql<DbPayload>(
+      `
+      query FindMangaBySourceUrl($sourceId: LongString!) {
+        mangas(condition: { sourceId: $sourceId }) {
+          nodes {
+            id
+            title
+            thumbnailUrl
+            realUrl
+          }
+        }
+      }
+    `,
+      { sourceId },
+    );
+
+    // Find a manga whose stored URL path is a suffix of the requested URL path.
+    // e.g. stored "/manga/the-beginning-after-the-end" is a suffix of
+    // "/title/95390-the-beginning-after-the-end" — both end with the same slug.
+    const slugSuffix = (path: string) => {
+      // Extract the trailing slug segment (everything after the last hyphen-free prefix).
+      // "/title/95390-the-beginning-after-the-end" → "the-beginning-after-the-end"
+      // "/manga/the-beginning-after-the-end" → "the-beginning-after-the-end"
+      const parts = path.replace(/\/$/, '').split('/');
+      const last = parts[parts.length - 1] ?? '';
+      // Strip a leading "<digits>-" prefix if present (bato.to /title/ format).
+      return last.replace(/^\d+-/, '');
+    };
+
+    const requestedSlug = slugSuffix(urlPath);
+    const match = dbData.mangas.nodes.find((m) => {
+      if (!m.realUrl) {
+        // m has no realUrl; it only has the extension-internal url stored in DB.
+        // We can't access the `url` field from this query directly — re-query below.
+        return false;
+      }
+      try {
+        return slugSuffix(new URL(m.realUrl).pathname) === requestedSlug;
+      } catch {
+        return false;
+      }
+    });
+
+    if (match) return match;
+
+    // The DB nodes don't expose `url` in the above query; re-query with url field.
+    interface DbPayloadWithUrl {
+      mangas: {
+        nodes: Array<RawManga & { url: string }>;
+      };
+    }
+
+    const dbDataWithUrl = await this.gql<DbPayloadWithUrl>(
+      `
+      query FindMangaBySourceUrlWithPath($sourceId: LongString!) {
+        mangas(condition: { sourceId: $sourceId }) {
+          nodes {
+            id
+            title
+            thumbnailUrl
+            realUrl
+            url
+          }
+        }
+      }
+    `,
+      { sourceId },
+    );
+
+    const matchByPath = dbDataWithUrl.mangas.nodes.find((m) => {
+      return slugSuffix(m.url) === requestedSlug;
+    });
+
+    if (matchByPath) return matchByPath;
+
+    throw new Error(`No manga found for URL "${url}" in source ${sourceId}`);
   }
 
   /**
