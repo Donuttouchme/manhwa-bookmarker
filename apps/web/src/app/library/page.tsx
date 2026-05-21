@@ -17,7 +17,7 @@ export default async function LibraryPage() {
         <div className="flex items-center gap-4">
           <span className="text-sm text-muted-foreground">
             {user.email}
-            {(user as { isAdmin?: boolean }).isAdmin ? ' · admin' : ''}
+            {user.isAdmin ? ' · admin' : ''}
           </span>
           <form action={handleSignOut}>
             <Button type="submit" variant="ghost" size="sm">

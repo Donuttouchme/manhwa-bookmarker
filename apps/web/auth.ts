@@ -34,8 +34,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   callbacks: {
     ...authConfig.callbacks,
     async session({ session, user }) {
-      // Surface isAdmin on the session.
-      (session.user as { isAdmin?: boolean }).isAdmin = (user as { isAdmin?: boolean }).isAdmin ?? false;
+      session.user.isAdmin = user.isAdmin ?? false;
       return session;
     },
   },

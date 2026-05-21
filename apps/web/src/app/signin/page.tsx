@@ -25,9 +25,7 @@ export default async function SignInPage({
 
     const hdrs = await headers();
     const ip =
-      hdrs.get('x-forwarded-for')?.split(',')[0]?.trim() ??
-      hdrs.get('x-real-ip') ??
-      'unknown';
+      hdrs.get('x-forwarded-for')?.split(',')[0]?.trim() ?? hdrs.get('x-real-ip') ?? 'unknown';
 
     const limit = await checkRateLimit({
       key: `auth-signin:${ip}`,
@@ -36,9 +34,6 @@ export default async function SignInPage({
     });
 
     if (!limit.allowed) {
-      // Auth.js doesn't natively surface a "rate limited" error to the form;
-      // we redirect to a query-param state and render a message below.
-      const { redirect } = await import('next/navigation');
       redirect('/signin?rate=1');
     }
 
