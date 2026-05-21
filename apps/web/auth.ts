@@ -3,6 +3,7 @@ import Nodemailer from 'next-auth/providers/nodemailer';
 import { PrismaAdapter } from '@auth/prisma-adapter';
 import { prisma } from '@manhwa/db';
 import { authConfig } from './auth.config';
+import { markFirstUserAsAdmin } from './src/lib/admin-bootstrap';
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
@@ -24,4 +25,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       from: process.env.EMAIL_FROM,
     }),
   ],
+  events: {
+    async createUser({ user }) {
+      if (!user.id) return;
+      await markFirstUserAsAdmin(user.id);
+    },
+  },
+  callbacks: {
+    ...authConfig.callbacks,
+    async session({ session, user }) {
+      // Surface isAdmin on the session.
+      (session.user as { isAdmin?: boolean }).isAdmin = (user as { isAdmin?: boolean }).isAdmin ?? false;
+      return session;
+    },
+  },
 });
