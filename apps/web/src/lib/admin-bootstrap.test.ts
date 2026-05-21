@@ -11,11 +11,13 @@ async function makeUser(suffix: string) {
 }
 
 describe('markFirstUserAsAdmin', () => {
+  // These tests assert on `prisma.user.count()`, so the table must start empty.
+  // Wipe ALL users — safe because this is integration-tested against the local dev DB.
   beforeEach(async () => {
-    await prisma.user.deleteMany({ where: { email: { startsWith: TEST_PREFIX } } });
+    await prisma.user.deleteMany({});
   });
   afterEach(async () => {
-    await prisma.user.deleteMany({ where: { email: { startsWith: TEST_PREFIX } } });
+    await prisma.user.deleteMany({});
   });
 
   it('flags the only user as admin', async () => {
