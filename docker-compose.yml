@@ -8,11 +8,11 @@ services:
       POSTGRES_PASSWORD: manhwa_dev_password
       POSTGRES_DB: manhwa
     ports:
-      - "5432:5432"
+      - '5432:5432'
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U manhwa -d manhwa"]
+      test: ['CMD-SHELL', 'pg_isready -U manhwa -d manhwa']
       interval: 5s
       timeout: 5s
       retries: 5
@@ -22,12 +22,27 @@ services:
     container_name: manhwa-mailpit
     restart: unless-stopped
     ports:
-      - "1025:1025" # SMTP
-      - "8025:8025" # Web UI
+      - '1025:1025' # SMTP
+      - '8025:8025' # Web UI
     environment:
-      MP_MAX_MESSAGES: "5000"
-      MP_SMTP_AUTH_ACCEPT_ANY: "1"
-      MP_SMTP_AUTH_ALLOW_INSECURE: "1"
+      MP_MAX_MESSAGES: '5000'
+      MP_SMTP_AUTH_ACCEPT_ANY: '1'
+      MP_SMTP_AUTH_ALLOW_INSECURE: '1'
+
+  suwayomi:
+    image: ghcr.io/suwayomi/suwayomi-server:stable
+    container_name: manhwa-suwayomi
+    restart: unless-stopped
+    ports:
+      - '4567:4567'
+    volumes:
+      - suwayomi-data:/home/suwayomi/.local/share/Tachidesk
+    environment:
+      BIND_PORT: '4567'
+      BIND_IP: '0.0.0.0'
+      DOWNLOAD_AS_CBZ: 'false'
+      AUTO_DOWNLOAD_CHAPTERS: 'false'
 
 volumes:
   postgres-data:
+  suwayomi-data:
