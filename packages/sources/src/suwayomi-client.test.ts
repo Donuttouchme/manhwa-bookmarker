@@ -2,11 +2,8 @@
  * Integration tests for SuwayomiClient.
  *
  * Requires a running Suwayomi instance at SUWAYOMI_URL (default: http://localhost:4567).
- * Requires MangaDex extension installed (multi-language; we check the English source).
- *
- * NOTE: The plan originally specified Bato.To, but Bato.To is not present in the
- * Keiyoushi extension repository used by this Suwayomi v2.2.2100 instance.
- * MangaDex is installed instead and used as the reference extension for these tests.
+ * Requires the Bbato extension installed (pkgName: eu.kanade.tachiyomi.extension.en.bbato).
+ * Bbato is the Keiyoushi catalog name for the Bato.To Tachiyomi extension.
  */
 import { describe, expect, it, beforeAll } from 'vitest';
 import { SuwayomiClient } from './suwayomi-client.js';
@@ -16,9 +13,9 @@ const client = new SuwayomiClient(SUWAYOMI_URL);
 
 /**
  * The extension name we installed. Checked in listSources / findSourceByName tests.
- * MangaDex installs one source per language; we look for the English variant.
+ * Bbato is a single-language (English) extension.
  */
-const INSTALLED_EXT_NAME = 'MangaDex';
+const INSTALLED_EXT_NAME = 'Bbato';
 const INSTALLED_EXT_LANG = 'en';
 
 describe('SuwayomiClient', () => {
@@ -29,13 +26,13 @@ describe('SuwayomiClient', () => {
     if (!res.ok) throw new Error(`Suwayomi at ${SUWAYOMI_URL} returned ${res.status}`);
   });
 
-  it('listSources returns at least one source (MangaDex installed)', async () => {
+  it('listSources returns at least one source (Bbato installed)', async () => {
     const sources = await client.listSources();
     expect(sources.length).toBeGreaterThan(0);
     expect(sources.some((s) => s.name === INSTALLED_EXT_NAME)).toBe(true);
   });
 
-  it('findSourceByName returns MangaDex English source', async () => {
+  it('findSourceByName returns Bbato source', async () => {
     const source = await client.findSourceByName(INSTALLED_EXT_NAME);
     expect(source).not.toBeNull();
     expect(source?.name).toBe(INSTALLED_EXT_NAME);

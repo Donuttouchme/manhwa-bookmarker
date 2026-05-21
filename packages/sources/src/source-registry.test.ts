@@ -2,9 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { findRegistryEntry, SOURCE_REGISTRY } from './source-registry.js';
 
 describe('source registry', () => {
-  it('finds Bato.To for bato.to', () => {
+  it('finds the Bato.To extension (Bbato) for bato.to', () => {
     const entry = findRegistryEntry('bato.to');
-    expect(entry?.extensionName).toBe('Bato.To');
+    expect(entry?.extensionName).toBe('Bbato');
   });
 
   it('finds AsuraScans for any of the rebrand hostnames', () => {
@@ -14,7 +14,7 @@ describe('source registry', () => {
   });
 
   it('is case-insensitive', () => {
-    expect(findRegistryEntry('BATO.TO')?.extensionName).toBe('Bato.To');
+    expect(findRegistryEntry('BATO.TO')?.extensionName).toBe('Bbato');
   });
 
   it('returns null for unknown hosts', () => {

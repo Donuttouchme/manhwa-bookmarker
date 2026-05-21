@@ -7,7 +7,7 @@
  * to multiple hosts when a site has been rebranded (e.g. AsuraScans → AsuraComic).
  */
 export interface SourceRegistryEntry {
-  /** Extension name as shown in Suwayomi's source list (e.g. "Bato.To"). */
+  /** Extension name as shown in Suwayomi's source list (e.g. "Bbato", "AsuraScans"). */
   extensionName: string;
   /** Hosts the extension recognizes. Lowercased; no port. */
   hosts: readonly string[];
@@ -17,7 +17,10 @@ export interface SourceRegistryEntry {
 
 export const SOURCE_REGISTRY: readonly SourceRegistryEntry[] = [
   {
-    extensionName: 'Bato.To',
+    // The Bato.To Tachiyomi extension is published in the Keiyoushi catalog
+    // under the name "Bbato" (pkgName: eu.kanade.tachiyomi.extension.en.bbato),
+    // not "Bato.To" — registry collision with an older inactive extension.
+    extensionName: 'Bbato',
     hosts: ['bato.to', 'mto.to', 'wto.to', 'hto.to', 'dto.to', 'fto.to', 'jto.to', 'kto.to'],
     lang: 'en',
   },
