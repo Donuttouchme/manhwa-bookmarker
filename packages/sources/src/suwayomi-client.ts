@@ -40,6 +40,45 @@ interface GqlResponse<T> {
   errors?: Array<{ message: string; path?: string[] }>;
 }
 
+/**
+ * Heuristic: given a source URL, extract a search-friendly title string.
+ * Strips digit prefixes ("95390-foo" → "foo") and hash suffixes ("foo-aabb1" → "foo"
+ * when the trailing token looks like a short alphanumeric hash). Hyphens/underscores
+ * become spaces.
+ */
+function extractTitleSlug(url: string): string {
+  let path: string;
+  try {
+    path = new URL(url).pathname;
+  } catch {
+    return '';
+  }
+  // last non-empty segment
+  const segments = path.split('/').filter((s) => s.length > 0);
+  let slug = segments[segments.length - 1] ?? '';
+  // strip leading "<digits>-"
+  slug = slug.replace(/^\d+-/, '');
+  // strip trailing "-<short alphanumeric hash>" — only if the trailing token is 4–10 chars
+  // and contains at least one digit (heuristic to avoid stripping a real title word)
+  slug = slug.replace(/-([a-z0-9]{4,10})$/i, (m, tail) => (/\d/.test(tail) ? '' : m));
+  return slug.replace(/[-_]+/g, ' ').trim();
+}
+
+/**
+ * Canonicalize a URL for host+path matching (strips query, trailing slash, lowercases host).
+ * Avoids importing url-canonicalize.ts to prevent circular dependencies.
+ */
+function canonicalizeForMatch(url: string): string {
+  try {
+    const u = new URL(url);
+    let p = u.pathname;
+    if (p.length > 1 && p.endsWith('/')) p = p.slice(0, -1);
+    return `${u.hostname.toLowerCase()}${p}`;
+  } catch {
+    return url.toLowerCase();
+  }
+}
+
 export class SuwayomiClient {
   constructor(private readonly baseUrl: string) {}
 
@@ -104,7 +143,7 @@ export class SuwayomiClient {
   /**
    * Given a source ID and a URL, resolves the manga metadata.
    *
-   * Strategy (two-phase):
+   * Strategy (three-phase):
    *  1. URL-as-SEARCH: pass the full URL as the SEARCH query to the source.
    *     Many extensions recognise a URL string as a direct title lookup (e.g. MangaDex).
    *  2. Internal DB lookup: if phase 1 returns no results (e.g. Bbato only accepts
@@ -113,8 +152,13 @@ export class SuwayomiClient {
    *     when the manga was previously browsed/fetched through Suwayomi (e.g. via LATEST
    *     or POPULAR) — Suwayomi caches the full manga record, so we can retrieve it
    *     without hitting the source again.
+   *  3. Slug-based title search: if phases 1 and 2 both miss (e.g. the manga has never
+   *     been browsed through Suwayomi), extract a human-readable query from the URL slug
+   *     (stripping numeric prefixes and hash suffixes), search the source by that text,
+   *     and filter results by matching `realUrl`. This handles "fresh" URLs that the user
+   *     pastes for the first time.
    *
-   * Throws if neither phase finds a match.
+   * Throws if no phase finds a match.
    */
   async fetchMangaByUrl(sourceId: string, url: string): Promise<SuwayomiManga> {
     interface RawManga {
@@ -251,7 +295,60 @@ export class SuwayomiClient {
 
     if (matchByPath) return matchByPath;
 
-    throw new Error(`No manga found for URL "${url}" in source ${sourceId}`);
+    // Phase 3: slug-based title search with URL filter.
+    // Extract a human-readable query from the URL slug, search the source by that text,
+    // then filter results using two match strategies:
+    //   a) realUrl match: some extensions populate realUrl in search results (e.g. when
+    //      the manga was previously cached). Match canonical host+path.
+    //   b) Internal url slug match: extensions like Bbato return results with a `url`
+    //      field like "/manga/the-beginning-after-the-end". The slug of this path
+    //      must equal the slug we extracted from the input URL.
+    // This handles "fresh" URLs that have never been browsed through Suwayomi before.
+    const titleQuery = extractTitleSlug(url);
+    const inputSlug = slugSuffix(urlPath);
+
+    if (titleQuery.length > 0) {
+      interface SearchWithUrlPayload {
+        fetchSourceManga: {
+          mangas: Array<RawManga & { url: string }>;
+        };
+      }
+
+      const phase3Data = await this.gql<SearchWithUrlPayload>(
+        `mutation TitleSearch($input: FetchSourceMangaInput!) {
+          fetchSourceManga(input: $input) {
+            mangas {
+              id
+              title
+              thumbnailUrl
+              realUrl
+              url
+            }
+          }
+        }`,
+        { input: { source: sourceId, type: 'SEARCH', query: titleQuery, page: 1 } },
+      );
+
+      const target = canonicalizeForMatch(url);
+
+      const phase3Match = phase3Data.fetchSourceManga.mangas.find((m) => {
+        // Strategy a: realUrl match (canonical host+path comparison).
+        if (m.realUrl && canonicalizeForMatch(m.realUrl) === target) return true;
+        // Strategy b: internal url slug match.
+        // e.g. input slug "the-beginning-after-the-end" vs
+        //      m.url "/manga/the-beginning-after-the-end" → last segment matches.
+        if (m.url && slugSuffix(m.url) === inputSlug) return true;
+        return false;
+      });
+
+      if (phase3Match) return phase3Match;
+
+      throw new Error(
+        `No manga found at URL ${url} via search "${titleQuery}". Got ${phase3Data.fetchSourceManga.mangas.length} search result(s) but none matched the URL.`,
+      );
+    }
+
+    throw new Error(`Could not resolve URL ${url} via Suwayomi (no usable strategy).`);
   }
 
   /**

@@ -46,5 +46,26 @@ describe('SuwayomiSource', () => {
       expect(result.latestChapter).not.toBeNull();
       expect(Number(result.latestChapter)).toBeGreaterThan(0);
     }, 30_000);
+
+    // Phase-3 test: verifies slug-based title search works end-to-end.
+    // Phase 3 extracts the slug from the URL, searches the extension by title text,
+    // and matches search results by slug — bypassing the need for a realUrl on search
+    // results. The numeric ID in the bato.to URL is not validated by Suwayomi/Bbato;
+    // only the slug matters for matching.
+    //
+    // Note: if the slug is already in Suwayomi's DB cache from a prior browse/search,
+    // Phase 2 (DB slug lookup) handles it instead of Phase 3 — both paths converge on
+    // the same correct result. Phase 3 is the critical path for truly fresh installs.
+    it('resolves a Bato.to URL via slug search (Phase-3 path)', async () => {
+      // "Nano Machine" exists in Bbato's catalog (slug: nano-machine).
+      // Any plausible numeric ID works — Bbato/Suwayomi match by slug, not bato.to ID.
+      const url = 'https://bato.to/title/74789-nano-machine';
+      const result = await source.resolve(url);
+      expect(result.sourceId).toBe('suwayomi');
+      expect(result.title.length).toBeGreaterThan(0);
+      expect(result.title).toMatch(/nano machine/i);
+      expect(result.latestChapter).not.toBeNull();
+      expect(Number(result.latestChapter)).toBeGreaterThan(0);
+    }, 45_000);
   });
 });
