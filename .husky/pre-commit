@@ -1,0 +1,12 @@
+#!/usr/bin/env sh
+
+# Block secrets from being committed.
+MSYS_NO_PATHCONV=1 docker run --rm -v "${PWD}:/repo" --workdir /repo zricethezav/gitleaks:latest protect --staged --redact --no-banner || {
+  echo ""
+  echo "gitleaks blocked this commit -- a secret pattern was detected."
+  echo "If this is a false positive, add a narrow exception to .gitleaks.toml."
+  exit 1
+}
+
+# Run formatters/linters on staged files.
+pnpm exec lint-staged
