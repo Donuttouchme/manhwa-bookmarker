@@ -37,6 +37,7 @@ jobs:
           BIND_IP: '0.0.0.0'
           DOWNLOAD_AS_CBZ: 'false'
           AUTO_DOWNLOAD_CHAPTERS: 'false'
+          EXTENSION_REPOS: '["https://raw.githubusercontent.com/keiyoushi/extensions/main/index.min.json"]'
 
     steps:
       - uses: actions/checkout@v4
@@ -75,15 +76,15 @@ jobs:
           # fetchExtensions fetches from the remote Keiyoushi catalog — it can return 0
           # if Suwayomi hasn't loaded the catalog yet. Poll until we get >0 extensions.
           for i in $(seq 1 30); do
-            COUNT=$(curl -sf -X POST http://localhost:4567/api/graphql \
+            RESPONSE=$(curl -sf -X POST http://localhost:4567/api/graphql \
               -H 'Content-Type: application/json' \
-              -d '{"query":"mutation { fetchExtensions(input: {}) { extensions { pkgName } } }"}' \
-              | python3 -c "import sys,json; d=json.load(sys.stdin); print(len(d.get('data',{}).get('fetchExtensions',{}).get('extensions',[])))" 2>/dev/null || echo 0)
+              -d '{"query":"mutation { fetchExtensions(input: {}) { extensions { pkgName } } }"}' || echo '{}')
+            COUNT=$(echo "${RESPONSE}" | python3 -c "import sys,json; d=json.load(sys.stdin); print(len(d.get('data',{}).get('fetchExtensions',{}).get('extensions',[])))" 2>/dev/null || echo 0)
             if [ "${COUNT}" -gt 0 ]; then
               echo "Catalog loaded: ${COUNT} extensions after ${i}x3s"
               exit 0
             fi
-            echo "Catalog not ready yet (attempt ${i}, got ${COUNT}), retrying..."
+            echo "Attempt ${i}: got ${COUNT} extensions. Raw (first 200 chars): ${RESPONSE:0:200}"
             sleep 3
           done
           echo "Suwayomi catalog never loaded extensions" >&2
