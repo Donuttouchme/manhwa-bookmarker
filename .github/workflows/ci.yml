@@ -53,6 +53,11 @@ jobs:
       - name: Install
         run: pnpm install --frozen-lockfile
 
+      - name: Prisma generate
+        env:
+          DATABASE_URL: postgresql://manhwa:manhwa_dev_password@localhost:5432/manhwa
+        run: pnpm --filter @manhwa/db exec prisma generate
+
       - name: Wait for Suwayomi to boot
         run: |
           for i in $(seq 1 30); do
