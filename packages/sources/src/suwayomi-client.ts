@@ -10,7 +10,7 @@
  *    and take the first match.
  */
 
-export interface SuwayomiSource {
+export interface SuwayomiSourceInfo {
   /** Suwayomi's internal numeric ID for this installed source. */
   id: string;
   /** Source extension name as shown in the UI, e.g. "MangaDex". */
@@ -114,8 +114,8 @@ export class SuwayomiClient {
    * Uses the v2 Relay connection: `sources { nodes { id name lang } }`.
    * The "Local source" (id="0") is included.
    */
-  async listSources(): Promise<SuwayomiSource[]> {
-    const data = await this.gql<{ sources: { nodes: SuwayomiSource[] } }>(`
+  async listSources(): Promise<SuwayomiSourceInfo[]> {
+    const data = await this.gql<{ sources: { nodes: SuwayomiSourceInfo[] } }>(`
       query {
         sources {
           nodes {
@@ -135,7 +135,7 @@ export class SuwayomiClient {
    * If multiple sources share the same name (e.g. MangaDex has one per language),
    * returns the first match.
    */
-  async findSourceByName(name: string): Promise<SuwayomiSource | null> {
+  async findSourceByName(name: string): Promise<SuwayomiSourceInfo | null> {
     const sources = await this.listSources();
     return sources.find((s) => s.name === name) ?? null;
   }
@@ -196,8 +196,9 @@ export class SuwayomiClient {
       { source: sourceId, query: url },
     );
 
-    if (searchData.fetchSourceManga.mangas.length > 0) {
-      return searchData.fetchSourceManga.mangas[0];
+    const firstManga = searchData.fetchSourceManga.mangas[0];
+    if (firstManga) {
+      return firstManga;
     }
 
     // Phase 2: internal DB lookup.
