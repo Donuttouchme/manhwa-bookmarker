@@ -1,6 +1,7 @@
 import type { Job } from 'pg-boss';
 import { pollSeriesSource, TokenBucket, findRegistryEntry, canonicalizeUrl } from '@manhwa/sources';
 import { prisma } from '@manhwa/db';
+import { Sentry } from './sentry.js';
 
 const SOURCE_MIN_GAP_MS = 5_000; // be polite — at most 1 request / 5s per source extension
 
@@ -40,6 +41,7 @@ export function makePollHandler(
         );
       } catch (err) {
         console.error(`[poll] ${seriesSourceId} (${key}) → FATAL`, err);
+        Sentry.captureException(err, { tags: { seriesSourceId, bucketKey: key } });
         throw err; // let pg-boss retry per its policy
       }
     }
