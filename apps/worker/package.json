@@ -13,7 +13,8 @@
   },
   "dependencies": {
     "@manhwa/db": "workspace:*",
-    "@manhwa/sources": "workspace:*"
+    "@manhwa/sources": "workspace:*",
+    "pg-boss": "^10"
   },
   "devDependencies": {
     "@types/node": "^20.12.7",
