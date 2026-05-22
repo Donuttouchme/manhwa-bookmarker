@@ -1,6 +1,7 @@
 import { requireUser } from '@/lib/auth-helpers';
 import { signOut } from '../../../auth';
 import { Button } from '@/components/ui/button';
+import { AddSeriesDialog } from './_components/add-series-dialog';
 
 export default async function LibraryPage() {
   const user = await requireUser();
@@ -14,7 +15,8 @@ export default async function LibraryPage() {
     <main className="container mx-auto flex min-h-screen flex-col gap-8 p-8">
       <header className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Library</h1>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
+          <AddSeriesDialog />
           <span className="text-sm text-muted-foreground">
             {user.email}
             {user.isAdmin ? ' · admin' : ''}
@@ -28,7 +30,7 @@ export default async function LibraryPage() {
       </header>
       <section className="rounded-lg border border-dashed p-12 text-center">
         <p className="text-muted-foreground">
-          Your library is empty. Series will appear here once you add them (Plan 2).
+          Your library is empty. Click "Add series" to add your first one.
         </p>
       </section>
     </main>
