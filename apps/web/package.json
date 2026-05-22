@@ -14,6 +14,7 @@
   "dependencies": {
     "@auth/prisma-adapter": "^2.4.1",
     "@manhwa/db": "workspace:*",
+    "@manhwa/sources": "workspace:^",
     "@radix-ui/react-label": "^2.1.8",
     "@radix-ui/react-slot": "^1.2.4",
     "class-variance-authority": "^0.7.0",
@@ -25,6 +26,7 @@
     "nodemailer": "^6.9.13",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "string-similarity": "^4.0.4",
     "tailwind-merge": "^2.3.0"
   },
   "devDependencies": {
@@ -32,6 +34,7 @@
     "@types/nodemailer": "^6.4.15",
     "@types/react": "^18.3.1",
     "@types/react-dom": "^18.3.0",
+    "@types/string-similarity": "^4.0.2",
     "@vitest/coverage-v8": "^1.6.0",
     "autoprefixer": "^10.4.19",
     "postcss": "^8.4.38",
