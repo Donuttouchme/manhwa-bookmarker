@@ -20,6 +20,7 @@ model User {
 
   accounts Account[]
   sessions Session[]
+  series   Series[]
 
   @@index([email])
 }
@@ -71,4 +72,52 @@ model RateLimitEvent {
   occurredAt DateTime @default(now())
 
   @@index([key, occurredAt])
+}
+
+// --- Manga library ---
+
+model Series {
+  id        String         @id @default(cuid())
+  userId    String
+  /// User-editable canonical title. Defaults to the first source's title at add time.
+  title     String
+  coverUrl  String?
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  user    User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sources SeriesSource[]
+
+  @@index([userId])
+  @@index([userId, updatedAt])
+}
+
+model SeriesSource {
+  id              String   @id @default(cuid())
+  seriesId        String
+  /// Adapter id; currently always "suwayomi". Future custom scrapers will use other ids.
+  sourceId        String
+  /// The ID Suwayomi (or future adapter) uses to identify this manga.
+  externalMangaId String
+  /// Canonicalized URL on the source site (lowercased host, no query, no trailing slash).
+  sourceUrl       String
+  /// Title as reported by the source at last resolve. May differ from `Series.title`.
+  sourceTitle     String
+  /// Per-source read cursor. Anything strictly greater than this is unread.
+  lastReadChapter Decimal  @default(0) @db.Decimal(10, 2)
+  /// Highest known chapter number from this source. Null until first resolve / poll.
+  latestChapter   Decimal? @db.Decimal(10, 2)
+  /// Release time of the latest chapter, if known.
+  latestChapterAt DateTime?
+  /// When the polling worker should next fetch. Populated by Plan 3.
+  nextPollAt      DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  series Series @relation(fields: [seriesId], references: [id], onDelete: Cascade)
+
+  /// One source attachment per logical (sourceId, externalMangaId) inside a series.
+  @@unique([seriesId, sourceId, externalMangaId])
+  @@index([seriesId])
+  @@index([nextPollAt])
 }
