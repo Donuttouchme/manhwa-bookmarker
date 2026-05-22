@@ -38,6 +38,22 @@ Open http://localhost:3000. You'll be redirected to /signin. Enter your email, t
 
 The **first user to register on a fresh database is automatically flagged as admin**.
 
+## Adding source extensions
+
+Suwayomi needs a Tachiyomi extension installed for each source site you want to track from. Run once after `docker compose up -d`:
+
+```bash
+pnpm worker:install-extensions
+```
+
+This installs the extensions matching the sources in `packages/sources/src/source-registry.ts` (Bbato, AsuraScans, ReaperScans, MangaBuddy, Flame Comics). You can also install extensions manually via the Suwayomi web UI at http://localhost:4567.
+
+To verify resolution for a specific URL without going through the UI:
+
+```bash
+pnpm worker:probe https://bato.to/title/<slug>
+```
+
 ## Daily workflow
 
 ```bash
