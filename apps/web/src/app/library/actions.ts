@@ -1,11 +1,11 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { prisma } from '@manhwa/db';
-import { Decimal } from '@manhwa/db';
+import { prisma, Decimal } from '@manhwa/db';
 import { SuwayomiClient, SuwayomiSource, type ResolvedSeries } from '@manhwa/sources';
 import { auth } from '../../../auth';
 import { titleSimilarity, TITLE_MATCH_THRESHOLD } from '@/lib/series-helpers';
+import type { CursorSnapshot } from '@/lib/series-cursor-snapshot';
 
 const suwayomi = new SuwayomiSource(
   new SuwayomiClient(process.env.SUWAYOMI_URL ?? 'http://localhost:4567'),
@@ -158,8 +158,6 @@ export async function addSeries(input: AddSeriesInput): Promise<AddResult | Reso
   revalidatePath('/library');
   return { ok: true, seriesId };
 }
-
-import type { CursorSnapshot } from '@/lib/series-cursor-snapshot';
 
 export interface AdvanceResult {
   ok: true;
