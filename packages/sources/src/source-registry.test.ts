@@ -7,9 +7,9 @@ describe('source registry', () => {
     expect(entry?.extensionName).toBe('Bbato');
   });
 
-  it('finds AsuraScans for any of the rebrand hostnames', () => {
+  it('finds Asura Scans for any of the rebrand hostnames', () => {
     for (const host of ['asurascans.com', 'asuracomic.net', 'asura.gg', 'asuratoon.com']) {
-      expect(findRegistryEntry(host)?.extensionName, `host=${host}`).toBe('AsuraScans');
+      expect(findRegistryEntry(host)?.extensionName, `host=${host}`).toBe('Asura Scans');
     }
   });
 

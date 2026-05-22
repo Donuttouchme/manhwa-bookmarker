@@ -7,7 +7,7 @@
  * to multiple hosts when a site has been rebranded (e.g. AsuraScans → AsuraComic).
  */
 export interface SourceRegistryEntry {
-  /** Extension name as shown in Suwayomi's source list (e.g. "Bbato", "AsuraScans"). */
+  /** Extension name as shown in Suwayomi's source list (e.g. "Bbato", "Asura Scans"). */
   extensionName: string;
   /** Hosts the extension recognizes. Lowercased; no port. */
   hosts: readonly string[];
@@ -25,7 +25,7 @@ export const SOURCE_REGISTRY: readonly SourceRegistryEntry[] = [
     lang: 'en',
   },
   {
-    extensionName: 'AsuraScans',
+    extensionName: 'Asura Scans',
     hosts: ['asurascans.com', 'asuracomic.net', 'asura.gg', 'asuratoon.com'],
     lang: 'en',
   },

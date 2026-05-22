@@ -8,8 +8,7 @@ import { SuwayomiClient } from '@manhwa/sources';
  *  - `pkgName` is the Java package name used as the extension ID (e.g.
  *    "eu.kanade.tachiyomi.extension.en.bbato").
  *  - `apkName` is the filename of the APK in the repository.
- *  - `name` is the human-readable display name (e.g. "Asura Scans" — note the
- *    space, whereas our SOURCE_REGISTRY uses "AsuraScans" with no space).
+ *  - `name` is the human-readable display name (e.g. "Asura Scans").
  *
  * Install mechanism (v2.2.2100):
  *  - `installExternalExtension` takes a file upload (not a pkgName string), so
@@ -62,13 +61,10 @@ function normalizeExtName(name: string): string {
 
 /**
  * Find an extension by matching either:
- *  a) exact `name` field (e.g. "Bbato", "Flame Comics")
- *  b) normalized name (e.g. "AsuraScans" ↔ "Asura Scans")
+ *  a) exact `name` field (e.g. "Bbato", "Asura Scans", "Flame Comics")
+ *  b) normalized name (spaces/hyphens stripped and lowercased)
  *  c) the last component of `pkgName` (e.g. "asurascans" in
  *     "eu.kanade.tachiyomi.extension.en.asurascans")
- *
- * This covers the case where the Suwayomi display name has different spacing
- * from the name in SOURCE_REGISTRY (e.g. "AsuraScans" vs "Asura Scans").
  */
 function findExtension(available: ExtensionInfo[], targetName: string): ExtensionInfo | null {
   const normalTarget = normalizeExtName(targetName);
@@ -90,7 +86,7 @@ async function main() {
   // Target list: extension names from SOURCE_REGISTRY in packages/sources.
   // "ReaperScans" is included for completeness but may not exist in the
   // Keiyoushi catalog (it was not present as of 2026-05-22).
-  const want = ['Bbato', 'AsuraScans', 'ReaperScans', 'MangaBuddy', 'Flame Comics'];
+  const want = ['Bbato', 'Asura Scans', 'ReaperScans', 'MangaBuddy', 'Flame Comics'];
 
   console.log(`Fetching available extensions from ${suwayomiUrl}…`);
   const available = await fetchAvailableExtensions(client);
