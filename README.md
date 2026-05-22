@@ -2,7 +2,17 @@
 
 Multi-user web app for tracking unread chapters of mangas/manhwas across multiple source sites.
 
-This repo is **Plan 1: Foundation** — the auth + scaffolding shell. Series, sources, polling, and deployment land in later plans. See `docs/superpowers/plans/`.
+This repo currently has the **Foundation** (Plan 1) and **Sources & Add-Series** (Plan 2) shipped locally. The next step is the polling worker (Plan 3). See `docs/superpowers/plans/`.
+
+## Status
+
+| Feature                                        | State  |
+| ---------------------------------------------- | ------ |
+| Sign-in (magic link)                           | done   |
+| Library page with series list                  | done   |
+| Add-series flow (URL resolution + cursor init) | done   |
+| Polling for new chapters                       | Plan 3 |
+| Mark-as-read                                   | Plan 3 |
 
 ## Prerequisites
 
@@ -46,7 +56,7 @@ Suwayomi needs a Tachiyomi extension installed for each source site you want to 
 pnpm worker:install-extensions
 ```
 
-This installs the extensions matching the sources in `packages/sources/src/source-registry.ts` (Bbato, AsuraScans, ReaperScans, MangaBuddy, Flame Comics). You can also install extensions manually via the Suwayomi web UI at http://localhost:4567.
+This installs the extensions matching the sources in `packages/sources/src/source-registry.ts` (Bbato, Asura Scans, ReaperScans, MangaBuddy, Flame Comics). You can also install extensions manually via the Suwayomi web UI at http://localhost:4567.
 
 To verify resolution for a specific URL without going through the UI:
 
