@@ -125,3 +125,5 @@ pnpm typecheck    # all packages
 ## License
 
 To be decided by the project owner.
+
+<!-- ci smoke -->
