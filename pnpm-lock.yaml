@@ -132,6 +132,9 @@ importers:
       '@manhwa/sources':
         specifier: workspace:*
         version: link:../../packages/sources
+      '@sentry/node':
+        specifier: ^8
+        version: 8.55.2
       pg-boss:
         specifier: ^10
         version: 10.4.2

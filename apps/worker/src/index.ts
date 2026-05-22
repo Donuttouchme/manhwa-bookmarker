@@ -1,3 +1,5 @@
+import './sentry.js';
+import { Sentry, sentryEnabled } from './sentry.js';
 import { getBoss, POLL_QUEUE, stopBoss } from './boss.js';
 import { makePollHandler, type PollJobData } from './poll-handler.js';
 import { startScheduler } from './scheduler.js';
@@ -17,6 +19,7 @@ async function main() {
     console.log(`[worker] shutting down (${reason})`);
     stopScheduler();
     await stopBoss();
+    if (sentryEnabled) await Sentry.close(5_000);
     process.exit(0);
   }
 
@@ -26,5 +29,10 @@ async function main() {
 
 main().catch((err) => {
   console.error('[worker] fatal:', err);
-  process.exit(1);
+  if (sentryEnabled) {
+    Sentry.captureException(err);
+    void Sentry.flush(5_000).then(() => process.exit(1));
+  } else {
+    process.exit(1);
+  }
 });
