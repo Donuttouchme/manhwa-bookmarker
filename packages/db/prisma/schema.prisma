@@ -111,13 +111,41 @@ model SeriesSource {
   latestChapterAt DateTime?
   /// When the polling worker should next fetch. Populated by Plan 3.
   nextPollAt      DateTime?
+  /// When the last poll attempt finished (success or failure).
+  lastPolledAt    DateTime?
+  /// Last successful poll's outcome message (e.g. "polled 3 new chapters" or "no change"). For debugging.
+  lastPollNote    String?
+  /// Count of consecutive failed polls. Reset to 0 on any success. Used to back off after errors.
+  consecutiveFailures Int @default(0)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  series Series @relation(fields: [seriesId], references: [id], onDelete: Cascade)
+  series   Series    @relation(fields: [seriesId], references: [id], onDelete: Cascade)
+  chapters Chapter[]
 
   /// One source attachment per logical (sourceId, externalMangaId) inside a series.
   @@unique([seriesId, sourceId, externalMangaId])
   @@index([seriesId])
   @@index([nextPollAt])
+}
+
+model Chapter {
+  id               String    @id @default(cuid())
+  seriesSourceId   String
+  /// Chapter number as reported by the source (e.g. 0.5 for prologue, 12 for ch. 12).
+  chapterNumber    Decimal   @db.Decimal(10, 2)
+  /// Title from the source, may be empty/blank in some catalogs.
+  title            String
+  /// Direct URL to the chapter on the source site (when the source provides one).
+  sourceChapterUrl String?
+  /// When the source says this chapter was released, if known.
+  releasedAt       DateTime?
+  /// First time our poller observed this chapter.
+  firstSeenAt      DateTime  @default(now())
+
+  source SeriesSource @relation(fields: [seriesSourceId], references: [id], onDelete: Cascade)
+
+  /// Two rows can't claim the same chapter number for the same source attachment.
+  @@unique([seriesSourceId, chapterNumber])
+  @@index([seriesSourceId, chapterNumber])
 }
