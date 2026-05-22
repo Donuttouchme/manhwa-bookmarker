@@ -1,0 +1,29 @@
+version: 2
+updates:
+  # npm — root workspace; grouped so we don't get 50 PRs at once
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: '06:00'
+      timezone: Europe/Budapest
+    open-pull-requests-limit: 5
+    groups:
+      next:
+        patterns: ['next', 'react', 'react-dom', '@types/react*']
+      prisma:
+        patterns: ['prisma', '@prisma/*']
+      auth:
+        patterns: ['next-auth', '@auth/*']
+      sentry:
+        patterns: ['@sentry/*']
+      dev-tools:
+        patterns: ['typescript', 'tsx', 'vitest', 'prettier', 'lint-staged', 'husky', 'dotenv-cli']
+
+  # GitHub Actions — pinned to SHAs via Renovate later if needed
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
