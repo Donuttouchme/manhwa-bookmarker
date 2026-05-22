@@ -1,21 +1,39 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { prisma } from '@manhwa/db';
 import { pollSeriesSource } from './poll-series-source.js';
+import { SuwayomiClient } from './suwayomi-client.js';
+import { SuwayomiSource } from './suwayomi-source.js';
 
 const BATO_URL = 'https://bato.to/title/95390-the-beginning-after-the-end';
 const TEST_USER_EMAIL = 'poll-test@example.com';
 
+/**
+ * Resolve the Bato URL via Suwayomi to get the live internal manga ID.
+ * This replaces the old hardcoded externalMangaId: '1' which was only valid
+ * on the developer's local Suwayomi instance and breaks on fresh CI instances.
+ */
+async function resolveExternalMangaId(url: string): Promise<string> {
+  const suwayomiUrl = process.env.SUWAYOMI_URL ?? 'http://localhost:4567';
+  const client = new SuwayomiClient(suwayomiUrl);
+  const source = new SuwayomiSource(client);
+  const resolved = await source.resolve(url);
+  return resolved.externalMangaId;
+}
+
 async function makeUserSeriesAndSource() {
+  // Resolve the manga URL dynamically so externalMangaId is the actual Suwayomi
+  // internal ID on this instance (not a hardcoded value that breaks on fresh DBs).
+  const externalMangaId = await resolveExternalMangaId(BATO_URL);
+
   const user = await prisma.user.create({ data: { email: TEST_USER_EMAIL } });
   const series = await prisma.series.create({
     data: { userId: user.id, title: 'Placeholder' },
   });
-  // The externalMangaId is the Bbato-side id "1" (verified in Plan 2).
   const source = await prisma.seriesSource.create({
     data: {
       seriesId: series.id,
       sourceId: 'suwayomi',
-      externalMangaId: '1',
+      externalMangaId,
       sourceUrl: BATO_URL,
       sourceTitle: 'The Beginning After the End',
     },
