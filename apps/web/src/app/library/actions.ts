@@ -158,3 +158,96 @@ export async function addSeries(input: AddSeriesInput): Promise<AddResult | Reso
   revalidatePath('/library');
   return { ok: true, seriesId };
 }
+
+import type { CursorSnapshot } from '@/lib/series-cursor-snapshot';
+
+export interface AdvanceResult {
+  ok: true;
+  /** The pre-advance snapshot so the client can offer an undo. */
+  snapshot: CursorSnapshot;
+}
+
+export async function advanceCursor(
+  seriesId: string,
+  by: number,
+): Promise<AdvanceResult | ResolveError> {
+  const session = await auth();
+  if (!session?.user) return { ok: false, error: 'Not signed in.' };
+  if (!Number.isInteger(by) || by <= 0 || by > 1_000) {
+    return { ok: false, error: 'Invalid advance step.' };
+  }
+
+  const series = await prisma.series.findUnique({
+    where: { id: seriesId },
+    select: { id: true, userId: true },
+  });
+  if (!series || series.userId !== session.user.id) {
+    return { ok: false, error: 'Cannot advance that series.' };
+  }
+
+  const sources = await prisma.seriesSource.findMany({
+    where: { seriesId },
+    select: { id: true, lastReadChapter: true, latestChapter: true },
+  });
+
+  const snapshot: CursorSnapshot = {
+    seriesId,
+    cursors: sources.map((s) => ({
+      seriesSourceId: s.id,
+      lastReadChapter: s.lastReadChapter.toString(),
+    })),
+  };
+
+  await prisma.$transaction(
+    sources.map((s) => {
+      const candidate = s.lastReadChapter.plus(by);
+      const capped =
+        s.latestChapter && candidate.greaterThan(s.latestChapter) ? s.latestChapter : candidate;
+      return prisma.seriesSource.update({
+        where: { id: s.id },
+        data: { lastReadChapter: capped },
+      });
+    }),
+  );
+
+  revalidatePath('/library');
+  return { ok: true, snapshot };
+}
+
+export interface SetCursorResult {
+  ok: true;
+}
+
+export async function setCursor(snapshot: CursorSnapshot): Promise<SetCursorResult | ResolveError> {
+  const session = await auth();
+  if (!session?.user) return { ok: false, error: 'Not signed in.' };
+
+  const series = await prisma.series.findUnique({
+    where: { id: snapshot.seriesId },
+    select: { id: true, userId: true },
+  });
+  if (!series || series.userId !== session.user.id) {
+    return { ok: false, error: 'Cannot restore that series.' };
+  }
+
+  const sourceIds = snapshot.cursors.map((c) => c.seriesSourceId);
+  const sources = await prisma.seriesSource.findMany({
+    where: { id: { in: sourceIds }, seriesId: snapshot.seriesId },
+    select: { id: true },
+  });
+  if (sources.length !== sourceIds.length) {
+    return { ok: false, error: 'Snapshot references unknown sources.' };
+  }
+
+  await prisma.$transaction(
+    snapshot.cursors.map((c) =>
+      prisma.seriesSource.update({
+        where: { id: c.seriesSourceId },
+        data: { lastReadChapter: new Decimal(c.lastReadChapter) },
+      }),
+    ),
+  );
+
+  revalidatePath('/library');
+  return { ok: true };
+}

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { prisma } from '@manhwa/db';
+import { prisma, Decimal } from '@manhwa/db';
 
 const TEST_USER_EMAIL = 'actions-test@example.com';
 let TEST_USER_ID: string;
@@ -12,7 +12,7 @@ vi.mock('../../../auth', () => ({
 
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }));
 
-import { resolveSeriesByUrl, addSeries } from './actions';
+import { resolveSeriesByUrl, addSeries, advanceCursor, setCursor } from './actions';
 
 const BATO_URL = 'https://bato.to/title/95390-the-beginning-after-the-end';
 
@@ -146,6 +146,114 @@ describe('library actions', () => {
     it('rejects an unsupported URL', async () => {
       const result = await addSeries({ url: 'https://example.com/foo', cursorMode: 'from-zero' });
       expect(result.ok).toBe(false);
+    });
+  });
+
+  describe('advanceCursor + setCursor', () => {
+    it('advanceCursor bumps every source cursor by N and returns the prior snapshot', async () => {
+      const series = await prisma.series.create({
+        data: { userId: TEST_USER_ID, title: 'Multi-source' },
+      });
+      await prisma.seriesSource.create({
+        data: {
+          seriesId: series.id,
+          sourceId: 'suwayomi',
+          externalMangaId: '1',
+          sourceUrl: 'https://bato.to/title/1-foo',
+          sourceTitle: 'Foo',
+          lastReadChapter: new Decimal(10),
+          latestChapter: new Decimal(100),
+        },
+      });
+      await prisma.seriesSource.create({
+        data: {
+          seriesId: series.id,
+          sourceId: 'suwayomi',
+          externalMangaId: '2',
+          sourceUrl: 'https://bato.to/title/2-bar',
+          sourceTitle: 'Bar',
+          lastReadChapter: new Decimal(5),
+          latestChapter: new Decimal(30),
+        },
+      });
+
+      const result = await advanceCursor(series.id, 1);
+      if (!result.ok) throw new Error(`Expected ok, got: ${result.error}`);
+      expect(result.snapshot.seriesId).toBe(series.id);
+      expect(result.snapshot.cursors).toHaveLength(2);
+
+      const after = await prisma.seriesSource.findMany({
+        where: { seriesId: series.id },
+        orderBy: { externalMangaId: 'asc' },
+      });
+      expect(after[0]!.lastReadChapter.toString()).toBe('11');
+      expect(after[1]!.lastReadChapter.toString()).toBe('6');
+    });
+
+    it('advanceCursor caps each cursor at its source latestChapter', async () => {
+      const series = await prisma.series.create({
+        data: { userId: TEST_USER_ID, title: 'Cap-test' },
+      });
+      const src = await prisma.seriesSource.create({
+        data: {
+          seriesId: series.id,
+          sourceId: 'suwayomi',
+          externalMangaId: '1',
+          sourceUrl: 'https://bato.to/title/1-foo',
+          sourceTitle: 'Foo',
+          lastReadChapter: new Decimal(99),
+          latestChapter: new Decimal(100),
+        },
+      });
+
+      const result = await advanceCursor(series.id, 5);
+      if (!result.ok) throw new Error(`Expected ok, got: ${result.error}`);
+      const after = await prisma.seriesSource.findUniqueOrThrow({ where: { id: src.id } });
+      expect(after.lastReadChapter.toString()).toBe('100');
+    });
+
+    it('advanceCursor rejects a non-positive by', async () => {
+      const series = await prisma.series.create({
+        data: { userId: TEST_USER_ID, title: 'X' },
+      });
+      const r = await advanceCursor(series.id, 0);
+      expect(r.ok).toBe(false);
+    });
+
+    it('advanceCursor rejects a series owned by someone else', async () => {
+      const otherUser = await prisma.user.create({ data: { email: 'other@example.com' } });
+      const series = await prisma.series.create({
+        data: { userId: otherUser.id, title: 'Not yours' },
+      });
+      const r = await advanceCursor(series.id, 1);
+      expect(r.ok).toBe(false);
+    });
+
+    it('setCursor restores per-source cursors from a snapshot', async () => {
+      const series = await prisma.series.create({
+        data: { userId: TEST_USER_ID, title: 'Round-trip' },
+      });
+      const src = await prisma.seriesSource.create({
+        data: {
+          seriesId: series.id,
+          sourceId: 'suwayomi',
+          externalMangaId: '1',
+          sourceUrl: 'https://bato.to/title/1-foo',
+          sourceTitle: 'Foo',
+          lastReadChapter: new Decimal(50),
+          latestChapter: new Decimal(100),
+        },
+      });
+
+      const advance = await advanceCursor(series.id, 3);
+      if (!advance.ok) throw new Error('Expected ok');
+      const beforeUndo = await prisma.seriesSource.findUniqueOrThrow({ where: { id: src.id } });
+      expect(beforeUndo.lastReadChapter.toString()).toBe('53');
+
+      const undo = await setCursor(advance.snapshot);
+      if (!undo.ok) throw new Error(`Expected ok, got: ${undo.error}`);
+      const afterUndo = await prisma.seriesSource.findUniqueOrThrow({ where: { id: src.id } });
+      expect(afterUndo.lastReadChapter.toString()).toBe('50');
     });
   });
 });
