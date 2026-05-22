@@ -68,6 +68,7 @@ export async function pollSeriesSource(
 
     for (const ch of remote) {
       const chapterNumber = new Decimal(ch.chapterNumber);
+      if (chapterNumber.lessThanOrEqualTo(0)) continue;
       const releasedAt = ch.uploadDate > 0 ? new Date(ch.uploadDate) : null;
       const existing = await db.chapter.findUnique({
         where: {

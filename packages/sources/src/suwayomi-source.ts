@@ -47,7 +47,8 @@ export class SuwayomiSource implements MangaSource {
 
     let latestChapter: Decimal | null = null;
     let latestChapterAt: Date | null = null;
-    for (const ch of chapters) {
+    const candidates = chapters.filter((ch) => ch.chapterNumber > 0);
+    for (const ch of candidates) {
       const dec = new Decimal(ch.chapterNumber);
       if (latestChapter === null || dec.gt(latestChapter)) {
         latestChapter = dec;

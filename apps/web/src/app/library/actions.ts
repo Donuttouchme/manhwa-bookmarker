@@ -239,6 +239,13 @@ export async function setCursor(snapshot: CursorSnapshot): Promise<SetCursorResu
     return { ok: false, error: 'Snapshot references unknown sources.' };
   }
 
+  for (const c of snapshot.cursors) {
+    const d = new Decimal(c.lastReadChapter);
+    if (d.isNaN() || !d.isFinite() || d.lessThan(0) || d.greaterThan(99_999_999)) {
+      return { ok: false, error: 'Invalid snapshot value.' };
+    }
+  }
+
   await prisma.$transaction(
     snapshot.cursors.map((c) =>
       prisma.seriesSource.update({

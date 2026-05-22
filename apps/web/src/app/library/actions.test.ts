@@ -229,6 +229,35 @@ describe('library actions', () => {
       expect(r.ok).toBe(false);
     });
 
+    it('setCursor rejects a snapshot with Infinity or negative values', async () => {
+      const series = await prisma.series.create({
+        data: { userId: TEST_USER_ID, title: 'Guard test' },
+      });
+      const src = await prisma.seriesSource.create({
+        data: {
+          seriesId: series.id,
+          sourceId: 'suwayomi',
+          externalMangaId: '1',
+          sourceUrl: 'https://bato.to/title/1-foo',
+          sourceTitle: 'Foo',
+          lastReadChapter: new Decimal(10),
+          latestChapter: new Decimal(100),
+        },
+      });
+
+      const infinityResult = await setCursor({
+        seriesId: series.id,
+        cursors: [{ seriesSourceId: src.id, lastReadChapter: 'Infinity' }],
+      });
+      expect(infinityResult.ok).toBe(false);
+
+      const negativeResult = await setCursor({
+        seriesId: series.id,
+        cursors: [{ seriesSourceId: src.id, lastReadChapter: '-5' }],
+      });
+      expect(negativeResult.ok).toBe(false);
+    });
+
     it('setCursor restores per-source cursors from a snapshot', async () => {
       const series = await prisma.series.create({
         data: { userId: TEST_USER_ID, title: 'Round-trip' },
