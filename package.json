@@ -19,6 +19,7 @@
     "worker:start": "pnpm --filter @manhwa/worker start",
     "worker:probe": "pnpm --filter @manhwa/worker probe",
     "worker:install-extensions": "pnpm --filter @manhwa/worker exec dotenv -e ../../.env.local -- tsx src/install-extensions.ts",
+    "worker:install-extensions:ci": "pnpm --filter @manhwa/worker run install-extensions:ci",
     "compose:up": "docker compose up -d",
     "compose:down": "docker compose down",
     "compose:reset": "docker compose down -v && docker compose up -d",

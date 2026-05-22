@@ -1,0 +1,92 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches-ignore: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: manhwa
+          POSTGRES_PASSWORD: manhwa_dev_password
+          POSTGRES_DB: manhwa
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U manhwa -d manhwa"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+      suwayomi:
+        image: ghcr.io/suwayomi/suwayomi-server:stable
+        ports:
+          - 4567:4567
+        env:
+          BIND_PORT: '4567'
+          BIND_IP: '0.0.0.0'
+          DOWNLOAD_AS_CBZ: 'false'
+          AUTO_DOWNLOAD_CHAPTERS: 'false'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.0.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Wait for Suwayomi to boot
+        run: |
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:4567 > /dev/null; then
+              echo "Suwayomi up after ${i}s"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Suwayomi never started" >&2
+          exit 1
+
+      - name: Install Suwayomi extensions
+        env:
+          SUWAYOMI_URL: http://localhost:4567
+        run: pnpm worker:install-extensions:ci
+
+      - name: Prisma migrate
+        env:
+          DATABASE_URL: postgresql://manhwa:manhwa_dev_password@localhost:5432/manhwa
+        run: pnpm --filter @manhwa/db exec prisma migrate deploy
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Test
+        env:
+          DATABASE_URL: postgresql://manhwa:manhwa_dev_password@localhost:5432/manhwa
+          SUWAYOMI_URL: http://localhost:4567
+          AUTH_SECRET: ci-fake-secret-for-deterministic-tests
+          AUTH_URL: http://localhost:3000
+          EMAIL_SERVER_HOST: localhost
+          EMAIL_SERVER_PORT: '1025'
+          EMAIL_SERVER_USER: ci
+          EMAIL_SERVER_PASSWORD: ci
+          EMAIL_FROM: noreply@ci.invalid
+        run: pnpm test
