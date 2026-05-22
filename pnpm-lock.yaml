@@ -108,6 +108,9 @@ importers:
       '@manhwa/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@manhwa/sources':
+        specifier: workspace:*
+        version: link:../../packages/sources
     devDependencies:
       '@types/node':
         specifier: ^20.12.7

@@ -16,6 +16,7 @@
     "db:studio": "dotenv -e .env.local -- pnpm --filter @manhwa/db exec prisma studio",
     "db:generate": "dotenv -e .env.local -- pnpm --filter @manhwa/db exec prisma generate",
     "worker:dev": "pnpm --filter @manhwa/worker dev",
+    "worker:probe": "pnpm --filter @manhwa/worker probe",
     "compose:up": "docker compose up -d",
     "compose:down": "docker compose down",
     "compose:reset": "docker compose down -v && docker compose up -d",
