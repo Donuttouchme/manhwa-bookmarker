@@ -112,6 +112,37 @@ describe('library actions', () => {
       expect(sources.length).toBe(1);
     }, 30_000);
 
+    it('rejects a NaN or negative atChapter', async () => {
+      const naNResult = await addSeries({
+        url: BATO_URL,
+        cursorMode: 'at-chapter',
+        atChapter: Number.NaN,
+      });
+      expect(naNResult.ok).toBe(false);
+
+      const negResult = await addSeries({
+        url: BATO_URL,
+        cursorMode: 'at-chapter',
+        atChapter: -1,
+      });
+      expect(negResult.ok).toBe(false);
+    }, 30_000);
+
+    it('caps cursor at latestChapter when atChapter overshoots', async () => {
+      const result = await addSeries({
+        url: BATO_URL,
+        cursorMode: 'at-chapter',
+        atChapter: 99_999_998, // very large but valid; should be capped
+      });
+      if (!result.ok) throw new Error(`Expected ok, got error: ${result.error}`);
+      const series = await prisma.series.findUniqueOrThrow({
+        where: { id: result.seriesId },
+        include: { sources: true },
+      });
+      const src = series.sources[0]!;
+      expect(src.lastReadChapter.toString()).toBe(src.latestChapter?.toString());
+    }, 30_000);
+
     it('rejects an unsupported URL', async () => {
       const result = await addSeries({ url: 'https://example.com/foo', cursorMode: 'from-zero' });
       expect(result.ok).toBe(false);

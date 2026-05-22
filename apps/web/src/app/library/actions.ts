@@ -98,9 +98,18 @@ export async function addSeries(input: AddSeriesInput): Promise<AddResult | Reso
     case 'caught-up':
       cursor = resolved.latestChapter ?? new Decimal(0);
       break;
-    case 'at-chapter':
-      cursor = new Decimal(input.atChapter ?? 0);
+    case 'at-chapter': {
+      const n = input.atChapter ?? 0;
+      if (!Number.isFinite(n) || n < 0 || n > 99_999_999) {
+        return { ok: false, error: 'Chapter number must be between 0 and 99,999,999.' };
+      }
+      cursor = new Decimal(n);
+      // Cap at latestChapter to keep unread math correct when user overshoots.
+      if (resolved.latestChapter && cursor.greaterThan(resolved.latestChapter)) {
+        cursor = resolved.latestChapter;
+      }
       break;
+    }
     case 'from-zero':
       cursor = new Decimal(0);
       break;
