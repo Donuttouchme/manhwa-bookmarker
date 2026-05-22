@@ -2,17 +2,17 @@
 
 Multi-user web app for tracking unread chapters of mangas/manhwas across multiple source sites.
 
-This repo currently has the **Foundation** (Plan 1) and **Sources & Add-Series** (Plan 2) shipped locally. The next step is the polling worker (Plan 3). See `docs/superpowers/plans/`.
+This repo currently has the **Foundation** (Plan 1), **Sources & Add-Series** (Plan 2), and **Polling Worker** (Plan 3) shipped locally. Plan 4 (Fly + Neon deployment, CI/CD) is next. See `docs/superpowers/plans/`.
 
 ## Status
 
-| Feature                                        | State  |
-| ---------------------------------------------- | ------ |
-| Sign-in (magic link)                           | done   |
-| Library page with series list                  | done   |
-| Add-series flow (URL resolution + cursor init) | done   |
-| Polling for new chapters                       | Plan 3 |
-| Mark-as-read                                   | Plan 3 |
+| Feature                                        | State |
+| ---------------------------------------------- | ----- |
+| Sign-in (magic link)                           | done  |
+| Library page with series list                  | done  |
+| Add-series flow (URL resolution + cursor init) | done  |
+| Polling for new chapters                       | done  |
+| Mark-as-read / advance cursor                  | done  |
 
 ## Prerequisites
 
@@ -64,12 +64,37 @@ To verify resolution for a specific URL without going through the UI:
 pnpm worker:probe https://bato.to/title/<slug>
 ```
 
+## Running the polling worker
+
+Plan 3 adds a polling worker that fetches new chapters from Suwayomi on an adaptive cadence (2h for active series, 3 days for stale ones, with ±10% jitter) and persists them in the `Chapter` table.
+
+Run alongside `pnpm dev` in a separate terminal:
+
+```bash
+pnpm worker:dev
+```
+
+Expected output (every 30 seconds):
+
+```
+[scheduler] enqueued <N> poll job(s)
+[poll] <seriesSourceId> (<extension>) → new=<n> total=<m> nextPollAt=<iso>
+```
+
+The worker uses `pg-boss` to persist jobs in the existing Postgres database (in a `pgboss` schema it creates on first run). If you stop the worker mid-job, the job survives the restart.
+
+If pg-boss fails to start on first run with a `pgcrypto` error, enable the extension once:
+
+```bash
+docker exec manhwa-postgres psql -U manhwa -d manhwa -c "CREATE EXTENSION IF NOT EXISTS pgcrypto;"
+```
+
 ## Daily workflow
 
 ```bash
 pnpm compose:up        # if not already running
 pnpm dev               # in one terminal
-pnpm worker:dev        # in another (stub for now)
+pnpm worker:dev        # in another
 ```
 
 Reset the local DB to a clean slate:
@@ -88,7 +113,7 @@ pnpm typecheck    # all packages
 ## Project layout
 
 - `apps/web` — Next.js 15 + Auth.js v5 + shadcn/ui
-- `apps/worker` — Background worker (stub; pg-boss polling lands in Plan 3)
+- `apps/worker` — Background worker (pg-boss scheduler + poll handler)
 - `packages/db` — Prisma schema + client; the source of truth for the data model
 
 ## Security notes
