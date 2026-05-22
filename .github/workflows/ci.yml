@@ -70,10 +70,47 @@ jobs:
           echo "Suwayomi never started" >&2
           exit 1
 
+      - name: Wait for Suwayomi extension catalog
+        run: |
+          # fetchExtensions fetches from the remote Keiyoushi catalog — it can return 0
+          # if Suwayomi hasn't loaded the catalog yet. Poll until we get >0 extensions.
+          for i in $(seq 1 30); do
+            COUNT=$(curl -sf -X POST http://localhost:4567/api/graphql \
+              -H 'Content-Type: application/json' \
+              -d '{"query":"mutation { fetchExtensions(input: {}) { extensions { pkgName } } }"}' \
+              | python3 -c "import sys,json; d=json.load(sys.stdin); print(len(d.get('data',{}).get('fetchExtensions',{}).get('extensions',[])))" 2>/dev/null || echo 0)
+            if [ "${COUNT}" -gt 0 ]; then
+              echo "Catalog loaded: ${COUNT} extensions after ${i}x3s"
+              exit 0
+            fi
+            echo "Catalog not ready yet (attempt ${i}, got ${COUNT}), retrying..."
+            sleep 3
+          done
+          echo "Suwayomi catalog never loaded extensions" >&2
+          exit 1
+
       - name: Install Suwayomi extensions
         env:
           SUWAYOMI_URL: http://localhost:4567
         run: pnpm worker:install-extensions:ci
+
+      - name: Wait for Bbato source to activate
+        run: |
+          # After installing, Suwayomi must reload the extension APK.
+          # Poll the sources GQL endpoint until Bbato appears (or 60s timeout).
+          for i in $(seq 1 30); do
+            FOUND=$(curl -sf -X POST http://localhost:4567/api/graphql \
+              -H 'Content-Type: application/json' \
+              -d '{"query":"{ sources { nodes { name } } }"}' \
+              | python3 -c "import sys,json; d=json.load(sys.stdin); srcs=d.get('data',{}).get('sources',{}).get('nodes',[]); print(any(s.get('name')=='Bbato' for s in srcs))" 2>/dev/null || echo False)
+            if [ "${FOUND}" = "True" ]; then
+              echo "Bbato source active after ${i}x2s"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Bbato source never became active — extensions may need a longer warm-up" >&2
+          exit 1
 
       - name: Prisma migrate
         env:
