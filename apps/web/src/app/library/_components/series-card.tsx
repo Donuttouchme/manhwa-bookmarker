@@ -1,5 +1,6 @@
 import { Decimal } from '@manhwa/db';
 import { Card, CardContent } from '@/components/ui/card';
+import { SeriesCardActions } from './series-card-actions';
 
 export interface SeriesCardData {
   id: string;
@@ -45,7 +46,7 @@ export function SeriesCard({ series }: { series: SeriesCardData }) {
             {series.sources.length} source{series.sources.length === 1 ? '' : 's'}
           </p>
         </div>
-        <div className="flex-shrink-0">
+        <div className="flex flex-shrink-0 items-center gap-3">
           {unread > 0 ? (
             <span className="inline-flex h-7 min-w-7 items-center justify-center rounded-full bg-primary px-2 text-sm font-semibold text-primary-foreground">
               {unread}
@@ -53,6 +54,7 @@ export function SeriesCard({ series }: { series: SeriesCardData }) {
           ) : (
             <span className="text-xs text-muted-foreground">caught up</span>
           )}
+          <SeriesCardActions seriesId={series.id} unread={unread} />
         </div>
       </CardContent>
     </Card>
