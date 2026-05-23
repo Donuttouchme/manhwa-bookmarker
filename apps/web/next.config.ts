@@ -4,8 +4,16 @@ import { withSentryConfig } from '@sentry/nextjs';
 const nextConfig: NextConfig = {
   output: 'standalone',
   reactStrictMode: true,
+  transpilePackages: ['@manhwa/sources', '@manhwa/db'],
   experimental: {
     typedRoutes: true,
+  },
+  webpack: (config) => {
+    config.resolve.extensionAlias = {
+      '.js': ['.ts', '.tsx', '.js'],
+      '.mjs': ['.mts', '.mjs'],
+    };
+    return config;
   },
 };
 
