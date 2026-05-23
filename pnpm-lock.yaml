@@ -138,13 +138,13 @@ importers:
       pg-boss:
         specifier: ^10
         version: 10.4.2
+      tsx:
+        specifier: ^4.11.0
+        version: 4.22.3
     devDependencies:
       '@types/node':
         specifier: ^20.12.7
         version: 20.19.41
-      tsx:
-        specifier: ^4.11.0
-        version: 4.22.3
       typescript:
         specifier: ^5.4.5
         version: 5.9.3
