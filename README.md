@@ -1,18 +1,40 @@
 # Manhwa Bookmarker
 
-Multi-user web app for tracking unread chapters of mangas/manhwas across multiple source sites.
+Track unread chapters across manga/manhwa aggregator sites (Bato.to, AsuraScans, MangaBuddy, Flame Comics, …). Multi-user, with adaptive polling, fuzzy duplicate detection, and a one-click "read + undo" UX.
 
-This repo currently has the **Foundation** (Plan 1), **Sources & Add-Series** (Plan 2), and **Polling Worker** (Plan 3) shipped locally. Plan 4 (Fly + Neon deployment, CI/CD) is next. See `docs/superpowers/plans/`.
+This is a personal learning project that I happen to develop in public — see [CONTRIBUTING.md](./CONTRIBUTING.md). The stack is intentionally a stretch into web development from my embedded-systems background, so expect rough edges.
+
+> **Status:** All four plans (foundation, sources & add-series, polling worker, deployment infrastructure) are merged. Live deployment to Fly.io is the final step pending external account setup — see [docs/deployment.md](./docs/deployment.md).
+
+## Stack
+
+- **Frontend:** Next.js 15 (App Router), shadcn/ui, Tailwind, dark mode by default
+- **Auth:** Auth.js v5 (magic links via Resend + Google OAuth, DB sessions)
+- **Backend:** Prisma 5 on Postgres (Neon for prod, Docker for local), server actions
+- **Worker:** pg-boss for durable job queue, custom token-bucket + adaptive cadence
+- **Scraping:** Suwayomi-Server (the upstream Tachiyomi-on-server image) — no custom scrapers
+- **Hosting:** Fly.io (three apps per environment: web, worker, suwayomi)
+- **Observability:** Sentry for errors, Fly logs for stdout
+- **CI/CD:** GitHub Actions (test+typecheck+gitleaks on PR; auto-deploy staging on PR, prod on merge)
+- **Local dev:** Docker Compose (postgres + mailpit + suwayomi)
 
 ## Status
 
-| Feature                                        | State |
-| ---------------------------------------------- | ----- |
-| Sign-in (magic link)                           | done  |
-| Library page with series list                  | done  |
-| Add-series flow (URL resolution + cursor init) | done  |
-| Polling for new chapters                       | done  |
-| Mark-as-read / advance cursor                  | done  |
+| Feature                             | Status                                       |
+| ----------------------------------- | -------------------------------------------- |
+| Sign-in (magic link)                | ✅                                           |
+| Sign-in (Google OAuth)              | infra in place, awaits prod deploy           |
+| Library page with series list       | ✅                                           |
+| Add-series flow with URL resolution | ✅                                           |
+| Cursor state on add                 | ✅                                           |
+| Polling for new chapters            | ✅                                           |
+| Mark-as-read / advance cursor       | ✅                                           |
+| Production deployment (Fly + Neon)  | infra in place, awaits account setup         |
+| CI/CD via GitHub Actions            | ✅ (CI green; CD ready once secrets are set) |
+| Error reporting (Sentry)            | SDK wired, awaits DSN                        |
+| Email digest                        | not planned                                  |
+| Chapter list UI                     | not planned                                  |
+| Custom domain                       | future polish                                |
 
 ## Prerequisites
 
@@ -66,7 +88,7 @@ pnpm worker:probe https://bato.to/title/<slug>
 
 ## Running the polling worker
 
-Plan 3 adds a polling worker that fetches new chapters from Suwayomi on an adaptive cadence (2h for active series, 3 days for stale ones, with ±10% jitter) and persists them in the `Chapter` table.
+The polling worker fetches new chapters from Suwayomi on an adaptive cadence (2h for active series, 3 days for stale ones, with ±10% jitter) and persists them in the `Chapter` table.
 
 Run alongside `pnpm dev` in a separate terminal:
 
@@ -115,6 +137,8 @@ pnpm typecheck    # all packages
 - `apps/web` — Next.js 15 + Auth.js v5 + shadcn/ui
 - `apps/worker` — Background worker (pg-boss scheduler + poll handler)
 - `packages/db` — Prisma schema + client; the source of truth for the data model
+
+For production operations (Fly.io apps, Neon database, secrets, scaling), see [docs/deployment.md](./docs/deployment.md).
 
 ## Security notes
 
