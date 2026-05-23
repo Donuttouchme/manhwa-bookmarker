@@ -18,6 +18,11 @@ export default async function SignInPage({
   const params = await searchParams;
   const showVerifyMessage = params.verify === '1';
 
+  async function googleSignIn() {
+    'use server';
+    await signIn('google', { redirectTo: '/library' });
+  }
+
   async function handleSignIn(formData: FormData) {
     'use server';
     const email = formData.get('email');
@@ -50,6 +55,16 @@ export default async function SignInPage({
           </CardDescription>
         </CardHeader>
         <CardContent>
+          <form action={googleSignIn} className="mb-4">
+            <Button type="submit" variant="outline" className="w-full">
+              Sign in with Google
+            </Button>
+          </form>
+          <div className="mb-4 flex items-center gap-2 text-xs text-muted-foreground">
+            <span className="h-px flex-1 bg-border" />
+            or
+            <span className="h-px flex-1 bg-border" />
+          </div>
           {showVerifyMessage ? (
             <p className="text-sm text-muted-foreground">
               Check your email for a sign-in link. You can close this tab.
