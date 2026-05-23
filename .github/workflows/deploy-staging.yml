@@ -16,7 +16,7 @@ jobs:
       contents: read
       pull-requests: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       # ─── Secrets gate ─────────────────────────────────
       # Secrets can't be checked in `if:` expressions directly.
