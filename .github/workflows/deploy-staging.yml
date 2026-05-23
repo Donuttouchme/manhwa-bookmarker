@@ -1,0 +1,81 @@
+name: Deploy staging
+
+on:
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: staging-deploy-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  migrate-and-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+
+      # ─── Secrets gate ─────────────────────────────────
+      # Secrets can't be checked in `if:` expressions directly.
+      # Map them to env vars, then inspect the env vars in a shell step.
+      - name: Check secrets present
+        id: check
+        env:
+          _FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          _STAGING_DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+        run: |
+          if [ -z "${_FLY_API_TOKEN}" ] || [ -z "${_STAGING_DATABASE_URL}" ]; then
+            echo "secrets-missing=true" >> $GITHUB_OUTPUT
+            echo "::warning::Required secrets (FLY_API_TOKEN, STAGING_DATABASE_URL) are not set — deploy steps will be skipped. Add them in GitHub → Settings → Secrets → Actions."
+          else
+            echo "secrets-missing=false" >> $GITHUB_OUTPUT
+          fi
+
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+        if: steps.check.outputs.secrets-missing != 'true'
+
+      # ─── Migrations ────────────────────────────────────
+      - name: Apply migrations to staging
+        if: steps.check.outputs.secrets-missing != 'true'
+        env:
+          DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+        run: |
+          npm install -g pnpm@9.15.0
+          pnpm install --frozen-lockfile --filter @manhwa/db
+          pnpm --filter @manhwa/db exec prisma migrate deploy
+
+      # ─── Deploy web ────────────────────────────────────
+      - name: Deploy web (staging)
+        if: steps.check.outputs.secrets-missing != 'true'
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          fly deploy --config apps/web/fly.staging.toml --remote-only \
+            --build-arg NEXT_PUBLIC_SENTRY_DSN="${{ secrets.STAGING_NEXT_PUBLIC_SENTRY_DSN }}" \
+            --build-arg SENTRY_DSN="${{ secrets.STAGING_SENTRY_DSN }}" \
+            --build-arg SENTRY_AUTH_TOKEN="${{ secrets.SENTRY_AUTH_TOKEN }}" \
+            --build-arg SENTRY_ORG="${{ secrets.SENTRY_ORG }}" \
+            --build-arg SENTRY_PROJECT="manhwa-web-staging"
+
+      # ─── Deploy worker ────────────────────────────────
+      - name: Deploy worker (staging)
+        if: steps.check.outputs.secrets-missing != 'true'
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: fly deploy --config apps/worker/fly.staging.toml --remote-only
+
+      # ─── Comment on PR ────────────────────────────────
+      - name: Comment deploy URL
+        if: steps.check.outputs.secrets-missing != 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '🚀 Deployed to staging: https://manhwa-web-staging.fly.dev'
+            })
