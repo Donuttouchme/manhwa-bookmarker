@@ -15,7 +15,7 @@
   "dependencies": {
     "@manhwa/db": "workspace:*",
     "@manhwa/sources": "workspace:*",
-    "@sentry/node": "^8",
+    "@sentry/node": "^10",
     "pg-boss": "^10",
     "tsx": "^4.11.0"
   },
