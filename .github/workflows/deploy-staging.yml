@@ -70,7 +70,7 @@ jobs:
       # ─── Comment on PR ────────────────────────────────
       - name: Comment deploy URL
         if: steps.check.outputs.secrets-missing != 'true'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             github.rest.issues.createComment({
