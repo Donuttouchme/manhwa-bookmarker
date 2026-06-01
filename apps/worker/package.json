@@ -17,10 +17,10 @@
     "@manhwa/sources": "workspace:*",
     "@sentry/node": "^8",
     "pg-boss": "^10",
-    "tsx": "^4.11.0"
+    "tsx": "^4.22.4"
   },
   "devDependencies": {
     "@types/node": "^20.12.7",
-    "typescript": "^5.4.5"
+    "typescript": "^6.0.3"
   }
 }
