@@ -26,10 +26,10 @@
     "prepare": "husky"
   },
   "devDependencies": {
-    "dotenv-cli": "^7.4.2",
+    "dotenv-cli": "^11.0.0",
     "husky": "^9.0.11",
-    "lint-staged": "^15.2.5",
-    "prettier": "^3.2.5",
-    "typescript": "^5.4.5"
+    "lint-staged": "^17.0.7",
+    "prettier": "^3.8.4",
+    "typescript": "^6.0.3"
   }
 }
